@@ -1,0 +1,286 @@
+###############################################################################
+#               Automation of heatmap analysis - Project PRONOM               #
+#                   Author: Pedro C./ Kuma Slamov                             #
+#                       2024.1 CNPEM Brazil                                   #
+###############################################################################
+#  PHEATMAP VERSION
+################################################################################
+
+# Load necessary libraries
+library(dplyr)
+library(openxlsx)
+library(readxl)
+library(pheatmap)
+library(RColorBrewer)
+library(viridis)  # For the plasma color palette
+
+# Function that splits the dataframes based on the number of columns and calculates the mean and sd if possible
+split_and_process <- function(df, cols1, cols2) {
+    # Check if the columns are indeed in the dataframe
+    if (any(cols1 > ncol(df)) || any(cols1 < 1)) {
+        stop("Uma ou mais colunas fornecidas em cols1 não existem no dataframe.")
+    }
+    
+    # Split the dataframe in two based on the given columns
+    df1 <- df %>% select(all_of(cols1))
+    
+    if (all(cols2 <= ncol(df) & cols2 >= 1)) {
+        df2 <- df %>% select(all_of(cols2))
+        
+        # Calculation of mean and standard deviation (manually)
+        mean_vals <- (df1 + df2) / 2
+        sd_vals <- sqrt((df1 - mean_vals)^2 + (df2 - mean_vals)^2) / 2
+        
+        # Combine the mean results in one dataframe
+        combined_results_mean <- data.frame(
+            Mean = as.vector(mean_vals)
+        )
+        # Combine the standard deviation results in one dataframe
+        combined_results_sd <- data.frame(
+            SD = as.vector(sd_vals)
+        )
+    } else {
+        combined_results_mean <- data.frame(
+            Mean = as.vector(df1)
+        )
+        combined_results_sd <- data.frame(
+            SD = NA
+        )
+    }
+    
+    return(list(df1 = df1, combined_results_mean = combined_results_mean,
+                combined_results_sd = combined_results_sd))
+}
+
+# Function that reads all the sheets in an excel file
+read_all_sheets <- function(file_path, cols1, cols2) {
+    # Save the sheets names
+    sheet_names <- excel_sheets(file_path)
+    
+    # Create a list to hold the dataframes
+    sheet_list <- list()
+    
+    # Read each sheet in the file
+    for (sheet in sheet_names) {
+        sheet_data <- read_excel(file_path, sheet = sheet)
+        processed_data <- split_and_process(sheet_data, cols1, cols2)
+        sheet_list[[sheet]] <- processed_data
+    }
+    
+    # Return the list of dataframes
+    return(sheet_list)
+}
+
+# Function to read all Excel files in the "patients" folder
+read_all_files <- function(folder_path, cols1, cols2) {
+    files <- list.files(folder_path, pattern = "\\.xlsx$", full.names = TRUE)
+    all_sheets <- lapply(files, read_all_sheets, cols1, cols2)
+    names(all_sheets) <- basename(files)
+    return(all_sheets)
+}
+
+# Path of the patients folder
+folder_path <- "patients"
+
+# The selected number of columns 
+cols1 <- c(2:11)
+cols2 <- c(12:21)
+
+# Call the read_all_files function
+all_sheets <- read_all_files(folder_path, cols1, cols2)
+
+# Checks the content of the sheets
+print(names(all_sheets))  # Show file names
+print(all_sheets)  # Show the content of the dataframes 
+
+# Function to export results to a specific folder
+export_results <- function(results, export_path, base_filename) {
+    write.xlsx(results$combined_results_mean, file = file.path(export_path, paste0(base_filename, "_mean.xlsx")), rowNames = FALSE)
+    write.xlsx(results$combined_results_sd, file = file.path(export_path, paste0(base_filename, "_sd.xlsx")), rowNames = FALSE)
+}
+
+# Create a results folder if it doesn't exist
+results_folder <- "results"
+if (!dir.exists(results_folder)) {
+    dir.create(results_folder)
+}
+
+# Create a results_heatmaps folder if it doesn't exist
+results_heatmaps_folder <- file.path(results_folder, "results_heatmaps")
+if (!dir.exists(results_heatmaps_folder)) {
+    dir.create(results_heatmaps_folder)
+}
+
+# Function to process each sheet and export results with a combined file
+export_combined_results <- function(all_sheets, export_path) {
+    for (file_name in names(all_sheets)) {
+        # Create a workbook for each file
+        wb <- createWorkbook()
+        
+        # Create a vector to keep track of sheet names and their counts
+        sheet_name_count <- list()
+        
+        sheets <- all_sheets[[file_name]]
+        for (sheet_name in names(sheets)) {
+            results <- sheets[[sheet_name]]
+            sheet_name_clean <- gsub("[^a-zA-Z0-9]", "_", sheet_name)  # Clean up sheet names
+            
+            # Ensure unique sheet names
+            if (sheet_name_clean %in% names(sheet_name_count)) {
+                sheet_name_count[[sheet_name_clean]] <- sheet_name_count[[sheet_name_clean]] + 1
+                sheet_name_clean <- paste0(sheet_name_clean, "_", sheet_name_count[[sheet_name_clean]])
+            } else {
+                sheet_name_count[[sheet_name_clean]] <- 1
+            }
+            
+            addWorksheet(wb, sheetName = sheet_name_clean)
+            writeData(wb, sheet = sheet_name_clean, x = results$combined_results_mean)
+            writeData(wb, sheet = sheet_name_clean, x = results$combined_results_sd, startCol = ncol(results$combined_results_mean) + 2)
+        }
+        
+        # Save the combined workbook
+        combined_file_path <- file.path(export_path, paste0(tools::file_path_sans_ext(file_name), "_combined.xlsx"))
+        saveWorkbook(wb, file = combined_file_path, overwrite = TRUE)
+    }
+}
+
+# Export all combined results
+export_combined_results(all_sheets, results_folder)
+
+# Import compounds from COMPOUNDS.txt
+compounds_file <- "COMPOUNDS.txt"
+if (file.exists(compounds_file)) {
+    compounds <- readLines(compounds_file)
+} else {
+    stop(paste("File", compounds_file, "not found."))
+}
+
+# Remove duplicates
+compounds <- unique(compounds)
+
+# Function to create a combined heatmap data frame for a specific file
+create_heatmap_data_for_file <- function(file_name, all_sheets, compounds) {
+    heatmap_data <- matrix(NA, nrow = length(compounds), ncol = 0)
+    rownames(heatmap_data) <- compounds
+    for (sheet_name in names(all_sheets[[file_name]])) {
+        result_file_mean <- file.path(results_folder, paste0(tools::file_path_sans_ext(file_name), "_combined.xlsx"))
+        if (file.exists(result_file_mean)) {
+            sheet_data <- read.xlsx(result_file_mean, sheet = gsub("[^a-zA-Z0-9]", "_", sheet_name))
+            heatmap_data <- cbind(heatmap_data, as.vector(as.matrix(sheet_data)))
+        }
+    }
+    colnames(heatmap_data) <- unlist(lapply(names(all_sheets[[file_name]]), function(sheet_name) {
+        paste(sheet_name, sep = "_")
+    }))
+    rownames(heatmap_data) <- compounds
+    return(heatmap_data)
+}
+
+# Function to plot and export heatmap
+plot_and_export_heatmap <- function(heatmap_data, file_name, plot_type) {
+    min_val <- min(heatmap_data, na.rm = TRUE)
+    max_val <- max(heatmap_data, na.rm = TRUE)
+    if (is.infinite(min_val) || is.infinite(max_val)) {
+        stop("Heatmap data contains invalid min or max values.")
+    }
+    
+    filename <- file.path(results_heatmaps_folder, paste0(tools::file_path_sans_ext(file_name), "_", plot_type, "_heatmap.png"))
+    
+    if (plot_type == "mean") {
+        pheatmap(
+            mat = heatmap_data,
+            color = viridis::plasma(100),  # Use the "plasma" color palette
+            border_color = NA,  # Remove border color
+            cellwidth = 60,  # Adjust as needed
+            cellheight = 20,  # Adjust as needed (3x cellwidth for 1:3 ratio)
+            scale = "none",
+            cluster_rows = FALSE,  # Disable row clustering
+            cluster_cols = FALSE,  # Disable column clustering
+            clustering_distance_rows = "euclidean",
+            clustering_distance_cols = "euclidean",
+            clustering_method = "complete",
+            cutree_rows = NA,
+            cutree_cols = NA,
+            treeheight_row = 0,    # Remove row tree height
+            treeheight_col = 0,    # Remove column tree height
+            legend = TRUE,
+            legend_breaks = c(min_val, max_val),
+            legend_labels = c("Low", "High"),
+            annotation_row = NULL,
+            annotation_col = NULL,
+            annotation_colors = NULL,
+            annotation_legend = FALSE,  # Remove annotation legend
+            annotation_names_row = TRUE,
+            annotation_names_col = TRUE,
+            drop_levels = TRUE,
+            show_rownames = TRUE,  # Show row names
+            show_colnames = TRUE,  # Show column names
+            main = paste("Heatmap of Means -", file_name),
+            fontsize = 10,
+            fontsize_row = 10,
+            fontsize_col = 10,
+            angle_col = 45,
+            display_numbers = FALSE,  # Remove numbers from cells
+            number_format = "%.1f",
+            number_color = "grey30",
+            fontsize_number = 7,
+            filename = filename,
+            width = 12,
+            height = 42,
+            silent = FALSE,
+            na_col = "#DDDDDD"
+        )
+    } else if (plot_type == "auto_scaled") {
+        scaled_data <- t(scale(t(heatmap_data), center = TRUE, scale = TRUE))
+        
+        pheatmap(
+            mat = scaled_data,
+            color = viridis::plasma(100),  # Use the "plasma" color palette
+            border_color = NA,  # Remove border color
+            cellwidth = 60,  # Adjust as needed
+            cellheight = 20,  # Adjust as needed (3x cellwidth for 1:3 ratio)
+            scale = "row",  # Auto-scaling (z-score) by row
+            cluster_rows = TRUE,  # Enable row clustering
+            cluster_cols = TRUE,  # Enable column clustering
+            clustering_distance_rows = "euclidean",
+            clustering_distance_cols = "euclidean",
+            clustering_method = "complete",
+            cutree_rows = NA,
+            cutree_cols = NA,
+            treeheight_row = 50,    # Adjust row tree height as needed
+            treeheight_col = 50,    # Adjust column tree height as needed
+            legend = TRUE,
+            annotation_row = NULL,
+            annotation_col = NULL,
+            annotation_colors = NULL,
+            annotation_legend = FALSE,  # Remove annotation legend
+            annotation_names_row = TRUE,
+            annotation_names_col = TRUE,
+            drop_levels = TRUE,
+            show_rownames = TRUE,  # Show row names
+            show_colnames = TRUE,  # Show column names
+            main = paste("Auto-Scaled Heatmap with Clustering -", file_name),
+            fontsize = 10,
+            fontsize_row = 10,
+            fontsize_col = 10,
+            angle_col = 45,
+            display_numbers = FALSE,  # Remove numbers from cells
+            number_format = "%.1f",
+            number_color = "grey30",
+            fontsize_number = 7,
+            filename = filename,
+            width = 12,
+            height = 42,
+            silent = FALSE,
+            na_col = "#DDDDDD"
+        )
+    }
+}
+
+# Create and export heatmaps for each file
+for (file_name in names(all_sheets)) {
+    heatmap_data <- create_heatmap_data_for_file(file_name, all_sheets, compounds)
+    plot_and_export_heatmap(heatmap_data, file_name, "mean")
+    plot_and_export_heatmap(heatmap_data, file_name, "auto_scaled")
+}
+
