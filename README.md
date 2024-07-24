@@ -1,5 +1,4 @@
-# PRONON
-Automatization strategies for HTS methods
+# PRONON - Automatization strategies for HTS methods
 ---
 
 # Projeto de Análise de Heatmaps
