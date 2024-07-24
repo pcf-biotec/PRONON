@@ -1,28 +1,30 @@
-# PRONON - Automatization strategies for HTS methods
 ---
 
-# Projeto de Análise de Heatmaps
+# PRONON - Automation Strategies for HTS Methods
+---
 
-## Descrição
+# Heatmap Analysis Project
 
-Este projeto realiza a análise e visualização de dados de múltiplos arquivos Excel. O objetivo é processar dados, calcular médias e desvios padrão, e gerar heatmaps personalizados. Os arquivos resultantes são exportados para diretórios específicos para facilitar a análise e a visualização.
+## Description
 
-## Funcionalidades
+This project performs analysis and visualization of data from multiple Excel files. The goal is to process data, calculate means and standard deviations, and generate customized heatmaps. The resulting files are exported to specific directories to facilitate analysis and visualization.
 
-- **Leitura e Processamento de Arquivos Excel:** Processa múltiplos arquivos e folhas, calcula estatísticas básicas (médias e desvios padrão).
-- **Geração de Heatmaps:** Cria heatmaps utilizando paletas de cores personalizadas e métodos de escalonamento.
-- **Exportação de Resultados:** Exporta os resultados processados e os heatmaps para diretórios específicos.
+## Features
 
-## Estrutura do Projeto
+- **Excel File Reading and Processing:** Processes multiple files and sheets, calculates basic statistics (means and standard deviations).
+- **Heatmap Generation:** Creates heatmaps using customized color palettes and scaling methods.
+- **Results Export:** Exports processed results and heatmaps to specific directories.
 
-- `patients/`: Pasta contendo os arquivos Excel a serem processados.
-- `results/`: Pasta onde os resultados serão exportados.
-  - `results_heatmaps/`: Subpasta dentro de `results/` onde os heatmaps serão salvos.
-- `COMPOUNDS.txt`: Arquivo de texto contendo compostos utilizados na análise de heatmaps.
+## Project Structure
 
-## Dependências
+- `patients/`: Folder containing the Excel files to be processed.
+- `results/`: Folder where the results will be exported.
+  - `results_heatmaps/`: Subfolder within `results/` where heatmaps will be saved.
+- `COMPOUNDS.txt`: Text file containing compounds used in heatmap analysis.
 
-Este projeto requer os seguintes pacotes R:
+## Dependencies
+
+This project requires the following R packages:
 
 - `dplyr`
 - `openxlsx`
@@ -31,7 +33,7 @@ Este projeto requer os seguintes pacotes R:
 - `RColorBrewer`
 - `viridis`
 
-Instale as dependências usando:
+Install the dependencies using:
 
 ```r
 install.packages(c("dplyr", "openxlsx", "readxl", "pheatmap", "RColorBrewer", "viridis"))
@@ -41,65 +43,47 @@ install.packages(c("dplyr", "openxlsx", "readxl", "pheatmap", "RColorBrewer", "v
 
 ### `heatmap_analysis.R`
 
-O script principal que realiza as seguintes operações:
+The main script performs the following operations:
 
-1. **Importação das Bibliotecas Necessárias**
-2. **Definição das Funções:**
-   - **`split_and_process(df, cols1, cols2)`**: Divide o dataframe em dois com base nas colunas fornecidas e calcula as médias e desvios padrão.
-   - **`read_all_sheets(file_path, cols1, cols2)`**: Lê todas as folhas de um arquivo Excel e processa os dados.
-   - **`read_all_files(folder_path, cols1, cols2)`**: Lê todos os arquivos Excel na pasta `patients`.
-   - **`export_results(results, export_path, base_filename)`**: Exporta os resultados calculados para arquivos Excel.
-   - **`export_combined_results(all_sheets, export_path)`**: Cria um arquivo Excel combinado para cada arquivo na pasta `patients`.
-   - **`create_heatmap_data_for_file(file_name, all_sheets, compounds)`**: Cria um dataframe combinado para geração de heatmaps.
-   - **`plot_and_export_heatmap(heatmap_data, file_name, plot_type)`**: Gera e exporta heatmaps com base nos dados fornecidos.
+1. **Import Required Libraries**
+2. **Define Functions:**
+   - **`split_and_process(df, cols1, cols2)`**: Splits the dataframe into two based on provided columns and calculates means and standard deviations.
+   - **`read_all_sheets(file_path, cols1, cols2)`**: Reads all sheets from an Excel file and processes the data.
+   - **`read_all_files(folder_path, cols1, cols2)`**: Reads all Excel files in the `patients` folder.
+   - **`export_results(results, export_path, base_filename)`**: Exports calculated results to Excel files.
+   - **`export_combined_results(all_sheets, export_path)`**: Creates a combined Excel file for each file in the `patients` folder.
+   - **`create_heatmap_data_for_file(file_name, all_sheets, compounds)`**: Creates a combined dataframe for heatmap generation.
+   - **`plot_and_export_heatmap(heatmap_data, file_name, plot_type)`**: Generates and exports heatmaps based on provided data.
 
-3. **Execução do Script:**
-   - Processa arquivos Excel na pasta `patients`.
-   - Calcula médias e desvios padrão.
-   - Exporta os resultados para arquivos Excel.
-   - Gera e exporta heatmaps.
+3. **Script Execution:**
+   - Processes Excel files in the `patients` folder.
+   - Calculates means and standard deviations.
+   - Exports results to Excel files.
+   - Generates and exports heatmaps.
 
-## Como Usar
+## How to Use
 
-1. **Preparar o Ambiente:**
-   - Instale o R e as bibliotecas necessárias.
-   - Coloque os arquivos Excel que deseja processar na pasta `patients/`.
-   - Crie o arquivo `COMPOUNDS.txt` com a lista de compostos.
+1. **Prepare the Environment:**
+   - Install R and the necessary libraries.
+   - Place the Excel files you want to process in the `patients/` folder.
+   - Create the `COMPOUNDS.txt` file with the list of compounds.
 
-2. **Executar o Script:**
-   - Abra o R ou RStudio.
-   - Execute o script `heatmap_analysis.R` no seu ambiente.
+2. **Run the Script:**
+   - Open R or RStudio.
+   - Execute the `heatmap_analysis.R` script in your environment.
 
-3. **Resultados:**
-   - Os arquivos de resultados serão salvos na pasta `results/`:
-     - `*_mean.xlsx`: Contém as médias calculadas.
-     - `*_sd.xlsx`: Contém os desvios padrão calculados.
-   - Os heatmaps serão salvos na subpasta `results/results_heatmaps/`.
+3. **Results:**
+   - Resulting files will be saved in the `results/` folder:
+     - `*_mean.xlsx`: Contains the calculated means.
+     - `*_sd.xlsx`: Contains the calculated standard deviations.
+   - Heatmaps will be saved in the `results/results_heatmaps/` subfolder.
 
-## Exemplo
+## Example
 
-Aqui está um exemplo de execução do script:
+Here is an example of running the script:
 
 ```r
 source("heatmap_analysis.R")
 ```
 
-Certifique-se de ajustar o caminho dos arquivos e pastas conforme necessário.
-
-## Contribuição
-
-Sinta-se à vontade para contribuir com melhorias ou correções. Por favor, siga as diretrizes padrão para contribuições em projetos de código aberto.
-
-1. Faça um fork deste repositório.
-2. Crie uma branch para suas alterações (`git checkout -b minha-nova-feature`).
-3. Faça suas alterações e teste-as.
-4. Envie suas alterações (`git push origin minha-nova-feature`).
-5. Abra um pull request no GitHub.
-
-## Licença
-
-Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICENSE) para mais detalhes.
-
----
-
-Espero que essa documentação ajude a entender e usar o projeto de forma mais eficiente! Se precisar de mais alguma coisa, é só avisar.
+Be sure to adjust the file and folder paths as necessary.
