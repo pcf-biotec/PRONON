@@ -1,7 +1,5 @@
 # PRONON
 Automatization strategies for HTS methods
-Claro! Abaixo está um exemplo de documentação detalhada para o GitHub, que pode ser incluída em um arquivo `README.md`. A documentação cobre desde a introdução ao projeto até a descrição das funções e instruções de uso.
-
 ---
 
 # Projeto de Análise de Heatmaps
